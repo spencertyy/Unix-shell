@@ -1,0 +1,6 @@
+# ninja log v5
+0	320	1707943392762548561	CMakeFiles/UnixShell.dir/main.cpp.o	d7fbbe6f9011ae69
+1	363	1707943392806623312	CMakeFiles/UnixShell.dir/shelpers.cpp.o	efb78086e29464ae
+363	394	1707943392837980718	UnixShell	9a1d1fb7230dd014
+15	740	1708029250713742447	CMakeFiles/UnixShell.dir/main.cpp.o	d7fbbe6f9011ae69
+16	784	1708029250759294223	CMakeFiles/UnixShell.dir/shelpers.cpp.o	efb78086e29464ae
