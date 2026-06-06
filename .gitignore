@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Build output
+UnixShell
+*.o
+
+# CLion / CMake
+cmake-build-debug/
+cmake-build-release/
+.idea/
+CMakeLists.txt.user

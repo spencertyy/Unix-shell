@@ -1,3 +1,0 @@
-/Users/yuyaotu/Desktop/cs6011-labs/6013os/UnixShell/cmake-build-debug/CMakeFiles/UnixShell.dir
-/Users/yuyaotu/Desktop/cs6011-labs/6013os/UnixShell/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/yuyaotu/Desktop/cs6011-labs/6013os/UnixShell/cmake-build-debug/CMakeFiles/rebuild_cache.dir
