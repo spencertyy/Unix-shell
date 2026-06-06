@@ -205,8 +205,8 @@ vector<Command> getCommands( const vector<string> & tokens )
             } else{
                 commands[cmdNumber].inputFd = open(tokens[j+1].c_str(), O_RDONLY);
             }
-
-             break;
+            // Skip the filename token that follows the redirect symbol
+            ++j;
          }
          else if( tokens[j] == "&" ){
             // Fill this in if you choose to do the optional "background command" part.
@@ -246,19 +246,16 @@ vector<Command> getCommands( const vector<string> & tokens )
       // has not gotten to it when the error (in a previous command) occurred.
        for (size_t i = 0; i < commands.size(); i++)
        {
-           // Close all the thing if error is true.
-           if(commands[i].inputFd != 0 ) {
-               if (close(commands[i].inputFd) != 1) {
-                   std::cout << "close input is fail \n";
+           if (commands[i].inputFd != STDIN_FILENO) {
+               if (close(commands[i].inputFd) == -1) {
+                   std::cerr << "close input failed\n";
                }
            }
-               if ( commands[i].outputFd != 1){//check the output is open or not, !=1 means is open
-                   // then we close
-                   if( close(commands[i].outputFd) != 1){//check if close successfully,if not cout error
-                       std::cout<< "close output is fail \n";
-                   }
+           if (commands[i].outputFd != STDOUT_FILENO) {
+               if (close(commands[i].outputFd) == -1) {
+                   std::cerr << "close output failed\n";
                }
-
+           }
        }
    }
    return commands;

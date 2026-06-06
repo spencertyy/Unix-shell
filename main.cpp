@@ -9,64 +9,89 @@
 #include <stdlib.h>
 #include "shelpers.h"
 #include <readline/readline.h>
+#include <readline/history.h>
 
 
 int main() {
-        std::string line;
         while (true) {
-            line = readline("myshell>");
+            char* raw = readline("myshell> ");
 
+            // Ctrl+D sends EOF: readline returns NULL
+            if (raw == nullptr) {
+                std::cout << std::endl;
+                break;
+            }
 
-            std::vector<std::string> args =tokenize(line);
+            std::string line(raw);
+            free(raw);
+
+            if (line.empty()) {
+                continue;
+            }
+
+            add_history(line.c_str());
+
+            if (line == "exit" || line == "quit") {
+                break;
+            }
+
+            std::vector<std::string> args = tokenize(line);
+            if (args.empty()) {
+                continue;
+            }
+
             std::vector<Command> Commands = getCommands(args);
-            if (Commands[0].execName != "cd") {
-                for (auto &Command: Commands) {
-                    pid_t pid = fork();
+            if (Commands.empty()) {
+                continue;
+            }
 
-                    if (pid == -1) {
-                        perror("Fork failed");
-                        continue;
-                    } else if (pid == 0) {
-                        // Redirect I/O if necessary
-                        if (Command.outputFd != 1) {
-                            if (dup2(Command.outputFd, 1) == -1) {
-                                perror("open output file/Dup2 error");
-                                exit(EXIT_FAILURE);
-                            }
-                        }
-                        if (Command.inputFd != 0) {
-                            if (dup2(Command.inputFd, 0) == -1) {
-                                perror("open input file/Dup2 error");
-                                exit(EXIT_FAILURE);
-                            }
-                        }
-                        // Child process
-                        if (execvp(Command.execName.c_str(), const_cast<char *const *>(Command.argv.data())) == -1) {
-                            // If execvp returns, it must have failed
-                            std::cerr << "Unknown command or execvp failed with error: " << strerror(errno)
-                                      << std::endl;
+            if (Commands[0].execName == "cd") {
+                continue;
+            }
+
+            // Fork all child processes first, then wait — avoids pipe deadlock
+            std::vector<pid_t> pids;
+            for (auto &cmd : Commands) {
+                pid_t pid = fork();
+
+                if (pid == -1) {
+                    perror("fork failed");
+                    break;
+                } else if (pid == 0) {
+                    if (cmd.outputFd != STDOUT_FILENO) {
+                        if (dup2(cmd.outputFd, STDOUT_FILENO) == -1) {
+                            perror("dup2 output");
                             exit(EXIT_FAILURE);
                         }
-                    } else {
-                        // Parent process
-                        if (Command.inputFd != 0) {
-                            if (close(Command.inputFd) == -1) {
-                                std::cout << "close input is fail";
-                            }
-                        }
-                        if (Command.outputFd != 1) {//check the output is open or not, !=1 means is open
-                            // then we close
-                            if (close(Command.outputFd) == -1) {//check if close successfully,if not cout error
-                                std::cout << "close output is fail";
-                            }
-                        }
-
-                        int status;
-                        waitpid(pid, &status, 0);
                     }
+                    if (cmd.inputFd != STDIN_FILENO) {
+                        if (dup2(cmd.inputFd, STDIN_FILENO) == -1) {
+                            perror("dup2 input");
+                            exit(EXIT_FAILURE);
+                        }
+                    }
+                    // Close all pipe fds inherited from parent before exec
+                    for (auto &other : Commands) {
+                        if (other.inputFd != STDIN_FILENO)   close(other.inputFd);
+                        if (other.outputFd != STDOUT_FILENO) close(other.outputFd);
+                    }
+                    if (execvp(cmd.execName.c_str(), const_cast<char *const *>(cmd.argv.data())) == -1) {
+                        std::cerr << cmd.execName << ": " << strerror(errno) << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                } else {
+                    pids.push_back(pid);
+                    // Parent closes its copies of the pipe fds so children can detect EOF
+                    if (cmd.inputFd != STDIN_FILENO)   close(cmd.inputFd);
+                    if (cmd.outputFd != STDOUT_FILENO) close(cmd.outputFd);
                 }
             }
 
+            // Wait for all children
+            for (pid_t pid : pids) {
+                int status;
+                waitpid(pid, &status, 0);
+            }
         }
 
         return 0;
